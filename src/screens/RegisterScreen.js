@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Modal,
 } from "react-native";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
@@ -26,26 +27,27 @@ export default function RegisterScreen({ navigation }) {
   const [otp, setOtp] = useState("");
   const [otpVerified, setOtpVerified] = useState(false);
 
+  // สำหรับ modal OTP
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
+  const [otpInput, setOtpInput] = useState("");
+
   // 🔐 ขอ OTP
   const requestOtp = () => {
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setOtp(generatedOtp);
-
+    setOtpInput(""); // reset input
+    setOtpModalVisible(true); // เปิด modal
     showNotification("🔐 OTP", `รหัส OTP คือ ${generatedOtp}`);
+  };
 
-    Alert.prompt(
-      "ยืนยัน OTP",
-      "กรอกรหัส OTP ที่ได้รับ",
-      (input) => {
-        if (input === generatedOtp) {
-          setOtpVerified(true);
-          Alert.alert("ยืนยันเบอร์สำเร็จ");
-        } else {
-          Alert.alert("OTP ไม่ถูกต้อง");
-        }
-      },
-      "plain-text"
-    );
+  const verifyOtp = () => {
+    if (otpInput === otp) {
+      setOtpVerified(true);
+      Alert.alert("ยืนยันเบอร์สำเร็จ");
+    } else {
+      Alert.alert("OTP ไม่ถูกต้อง");
+    }
+    setOtpModalVisible(false);
   };
 
   const register = async () => {
@@ -61,6 +63,7 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert("รหัสผ่านไม่ตรงกัน");
       return;
     }
+
     try {
       const email = `${phone}@app.local`;
       const res = await createUserWithEmailAndPassword(auth, email, password);
@@ -146,7 +149,6 @@ export default function RegisterScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-
         <TouchableOpacity style={styles.registerButton} onPress={register}>
           <Text style={styles.registerButtonText}>สมัครสมาชิก</Text>
         </TouchableOpacity>
@@ -157,6 +159,34 @@ export default function RegisterScreen({ navigation }) {
         >
           <Text style={styles.loginLinkText}>ไปหน้าเข้าสู่ระบบ</Text>
         </TouchableOpacity>
+
+        {/* OTP Modal */}
+        <Modal
+          visible={otpModalVisible}
+          transparent
+          animationType="slide"
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={{ fontSize: 16, fontWeight: "bold" }}>กรอกรหัส OTP ที่ได้รับ</Text>
+              <TextInput
+                value={otpInput}
+                onChangeText={setOtpInput}
+                keyboardType="numeric"
+                style={styles.modalInput}
+              />
+              <TouchableOpacity style={styles.modalButton} onPress={verifyOtp}>
+                <Text style={{ color: "white", fontWeight: "bold" }}>ยืนยัน</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ marginTop: 10, alignItems: "center" }}
+                onPress={() => setOtpModalVisible(false)}
+              >
+                <Text style={{ color: "red" }}>ยกเลิก</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -176,27 +206,25 @@ const styles = StyleSheet.create({
     borderColor: "#DDD",
   },
   inputWrapper: {
-  position: "relative",
-  marginBottom: 20,
-},
-
-inputWithIcon: {
-  backgroundColor: "#FFF",
-  paddingHorizontal: 16,
-  paddingVertical: 12,
-  borderRadius: 25,
-  fontSize: 16,
-  borderWidth: 1,
-  borderColor: "#DDD",
-  paddingRight: 45, // เว้นช่องให้ไอคอนอยู่ขวา
-},
-
-iconRight: {
-  position: "absolute",
-  right: 15,
-  top: "50%",
-  transform: [{ translateY: -12 }], // กึ่งกลางกล่อง
-},
+    position: "relative",
+    marginBottom: 20,
+  },
+  inputWithIcon: {
+    backgroundColor: "#FFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 25,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#DDD",
+    paddingRight: 45, // เว้นช่องให้ไอคอนอยู่ขวา
+  },
+  iconRight: {
+    position: "absolute",
+    right: 15,
+    top: "50%",
+    transform: [{ translateY: -12 }],
+  },
   otpButton: { backgroundColor: "#34B7F1", paddingVertical: 12, borderRadius: 25, alignItems: "center", marginBottom: 15 },
   otpButtonText: { color: "white", fontWeight: "bold" },
   verifiedText: { color: "green", marginBottom: 15, fontWeight: "bold" },
@@ -204,6 +232,31 @@ iconRight: {
   registerButtonText: { color: "white", fontSize: 16, fontWeight: "bold" },
   loginLink: { alignItems: "center", paddingVertical: 14 },
   loginLinkText: { color: "#34B7F1", fontSize: 16, fontWeight: "bold" },
-  passwordContainer: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
-  eye: { marginLeft: 10, fontSize: 18 },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContainer: {
+    width: "80%",
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 20,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: "#DDD",
+    borderRadius: 10,
+    padding: 10,
+    marginVertical: 15,
+    fontSize: 16,
+  },
+  modalButton: {
+    backgroundColor: "#34B7F1",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
 });
